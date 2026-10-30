@@ -1,37 +1,26 @@
-name: Mirror main branch
-
+name: Mirror to public org
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+    tags: ["v*"]
   workflow_dispatch:
 
 jobs:
   mirror:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout source repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup SSH
+      - name: Push to BDRThermeaGroup
         env:
-          KEY_B64: ${{ secrets.PUBLIC_MIRROR_DEPLOY_KEY_B64 }}
+          KEY: ${{ secrets.PUBLIC_MIRROR_DEPLOY_KEY }}
         run: |
           mkdir -p ~/.ssh
-          echo "$KEY_B64" | base64 -d > ~/.ssh/id_ed25519
+          echo "$KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan github.com >> ~/.ssh/known_hosts
-
-          # Verify key
-          ssh-keygen -l -f ~/.ssh/id_ed25519
-
-      - name: Configure remote
-        run: |
           git remote add public git@github.com:test-organization-for-mirror/test-project.git
-
-      - name: Mirror main
-        run: |
-          git push --force public HEAD:main
+          git push public HEAD:refs/heads/main
+          git push public --tags
