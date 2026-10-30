@@ -1,11 +1,9 @@
-name: Mirror to public org
+name: Mirror main branch
 
 on:
   push:
     branches:
       - main
-    tags:
-      - 'v*'
   workflow_dispatch:
 
 jobs:
@@ -13,46 +11,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout source repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Setup SSH
         env:
-          KEY: ${{ secrets.PUBLIC_MIRROR_DEPLOY_KEY }}
+          KEY_B64: ${{ secrets.PUBLIC_MIRROR_DEPLOY_KEY_B64 }}
         run: |
           mkdir -p ~/.ssh
-
-          # Write private key exactly as stored in the secret
-          printf '%s' "$KEY" > ~/.ssh/id_ed25519
-
+          echo "$KEY_B64" | base64 -d > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-
-          # Trust GitHub host key
           ssh-keyscan github.com >> ~/.ssh/known_hosts
 
-          # Validate key format
+          # Verify key
           ssh-keygen -l -f ~/.ssh/id_ed25519
 
-      - name: Test GitHub SSH Authentication
+      - name: Configure remote
         run: |
-          ssh -o StrictHostKeyChecking=yes -T git@github.com || true
-
-      - name: Configure Git
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Add Public Remote
-        run: |
-          git remote remove public 2>/dev/null || true
           git remote add public git@github.com:test-organization-for-mirror/test-project.git
 
-      - name: Push Branch
+      - name: Mirror main
         run: |
-          git push public HEAD:refs/heads/main
-
-      - name: Push Tags
-        run: |
-          git push public --tags
+          git push --force public HEAD:main
